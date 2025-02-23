@@ -112,6 +112,20 @@ Or press **`CTRL + C`**.
 👀 **Not Secure for Multi-User Systems** – May expose private screen content to anyone who can connect.  
 🐧 **Only Works on X11 (Linux)** – Won't work on Wayland without modifications.
 
+🖥️ Running in a Headless Environment (SSH, No GUI)
+
+If you see an error like:
+
+```
+import-im6.q16: unable to open X server `' @ error/import.c/ImportImageCommand/346.
+````
+
+You need to set the `DISPLAY` variable manually (usually is `:0`) before running the script:
+
+```sh
+DISPLAY=:0 ./server.sh
+```
+
 ---
 
 ## **📜 License & Disclaimer**

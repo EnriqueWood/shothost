@@ -92,7 +92,7 @@ if [[ -f "$CACHE_FILE" ]]; then
     echo "<h2>Latest Screenshot ($FORMAT)</h2>"
     echo "<p><strong>Screenshot taken at:</strong> $SCREENSHOT_TIME</p>"
     echo "<img src='data:image/png;base64,$BASE64_IMAGE' style='max-width: 90%; border: 2px solid #000;'><br><br>"
-    echo "<p>Format: <a href='/?size=tiny'>Tiny</a> | <a href='/?size=small'>Small</a> | <a href='/?size=medium'>Default</a><br>"
+    echo "<p>Format: <a href='/?size=tiny'>Tiny</a> | <a href='/?size=small'>Small</a> | <a href='/?size=medium'>Default</a><br> | <a href='/?size=original'>Original</a><br>"
     echo "<a href='/?size=original&download=true' download><button style='padding:10px; font-size:16px;'>Download Original</button></a>"
     echo "</body></html>"
 else
