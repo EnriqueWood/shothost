@@ -71,7 +71,6 @@ Run with **default settings** in background (port `8080`, 10-second cache):
 ```
 
 Run in background on port **8585** with a **15-second cache update**:
-
 ```sh
 ./server.sh 8585 15 &
 ```
