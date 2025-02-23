@@ -2,6 +2,7 @@
 
 PORT=${1:-8080}
 CACHE_LIFETIME=${2:-10}
+GEOMETRY=${3:-""}
 TEMP_DIR="/tmp/screenshot_server"
 CACHE_DIR="$TEMP_DIR/cache"
 REQUEST_HANDLER="$TEMP_DIR/handle_request.sh"
@@ -32,7 +33,12 @@ update_cache() {
     while true; do
         local temp_screenshot
         temp_screenshot=$(mktemp "$TEMP_DIR/screenshot-XXXXXX.png") || exit 1
-        import -silent -window root "$temp_screenshot" || { rm -f "$temp_screenshot"; exit 1; }
+        if [[ -n "$GEOMETRY" ]]; then
+            import -silent -window root -crop "$GEOMETRY" "$temp_screenshot"
+        else
+            import -silent -window root "$temp_screenshot"
+        fi
+
         date '+%Y-%m-%d %H:%M:%S' > "$CACHE_DIR/timestamp.txt"
         for format in tiny small medium original; do
             local output="$CACHE_DIR/$format.png"
@@ -87,7 +93,7 @@ if [[ -f "$CACHE_FILE" ]]; then
     echo -e "HTTP/1.1 200 OK\r"
     echo -e "Content-Type: text/html\r"
     echo -e "\r"
-    echo "<!DOCTYPE html><html lang='en'><head><title>Screenshot Viewer</title></head>"
+    echo "<!DOCTYPE html><html lang='en'><head><title>ShotHost Screenshot Viewer</title></head>"
     echo "<body style='text-align: center; font-family: Arial;'>"
     echo "<h2>Latest Screenshot ($FORMAT)</h2>"
     echo "<p><strong>Screenshot taken at:</strong> $SCREENSHOT_TIME</p>"

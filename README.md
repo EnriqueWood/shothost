@@ -1,6 +1,6 @@
 # 📸 ShotHost 🎯📤
 
-ShotHost This is a **simple screenshot server** that captures the screen at regular intervals and serves the latest screenshot over HTTP. It allows different sizes to be accessed and downloaded via a web interface.
+ShotHost is a **simple screenshot server** that captures the screen at regular intervals and serves the latest screenshot over HTTP. It allows different sizes to be accessed and downloaded via a web interface.
 
 ⚠ **🚨 WARNING: THIS SERVER IS NOT SECURE. DO NOT USE IN PRODUCTION. 🚨** ⚠
 
@@ -16,7 +16,8 @@ ShotHost This is a **simple screenshot server** that captures the screen at regu
 ✅ Captures the screen periodically and stores a cache.  
 ✅ Serves screenshots via a simple HTTP server.  
 ✅ Supports different image sizes (`tiny (10% size of original)` , `small (25% size of original)`, `medium (50% size of original)`, `original`).  
-✅ 🖼️ Allows direct Image download  
+✅ Supports capturing a specific portion of the screen using **X11 geometry format** (`WIDTHxHEIGHT+X+Y`).  
+✅ 🎨 Allows direct image download.  
 ✅ 🚀 **Dependency Check**: The script will notify if any required dependencies are missing.
 
 ---
@@ -48,31 +49,26 @@ brew install imagemagick socat coreutils grep
 ### **1️⃣ Start the Server**
 ```sh
 chmod +x server.sh
-./server.sh [PORT] [CACHE_INTERVAL]
+./server.sh [PORT] [CACHE_INTERVAL] [GEOMETRY]
 ```
 - 🖥️ `[PORT]` (optional) – Port to run the HTTP server (**default:** `8080`).
 - ⏳ `[CACHE_INTERVAL]` (optional) – Interval (in seconds) between screenshots (**default:** `10` seconds).
+- 🔄 `[GEOMETRY]` (optional) – Screen area to capture in `WIDTHxHEIGHT+X+Y` format (**default:** full screen).
 
 ### **Examples**
-Run on port **9090** with a **5-second cache update**:
+Run on port **9090** with a **5-second cache update**, capturing an area of **1920x1080 pixels starting at (1920,0) to capture the full hd screen at the monitor at the right of the main monitor**:
 ```sh
-./server.sh 9090 5
+./server.sh 9090 5 1920x1080+1920+0
 ```
 
-Run with **default settings** (port `8080`, 10-second cache):
+Run with **default settings** (port `8080`, 10-second cache, full-screen capture):
 ```sh
 ./server.sh
 ```
 
-Run with **default settings** in background (port `8080`, 10-second cache):
+Run in the background on port **8585** with a **15-second cache update**, capturing a **300x500 section from (20,30)**:
 ```sh
-./server.sh &
-
-```
-
-Run in background on port **8585** with a **15-second cache update**:
-```sh
-./server.sh 8585 15 &
+./server.sh 8585 15 300x500+20+30 &
 ```
 
 ---
@@ -118,7 +114,7 @@ If you see an error like:
 
 ```
 import-im6.q16: unable to open X server `' @ error/import.c/ImportImageCommand/346.
-````
+```
 
 You need to set the `DISPLAY` variable manually (usually is `:0`) before running the script:
 
