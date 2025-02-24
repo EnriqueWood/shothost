@@ -4,7 +4,8 @@ PORT=${1:-8080}
 CACHE_LIFETIME=${2:-10}
 GEOMETRY=${3:-""}
 TEMP_DIR="/tmp/screenshot_server"
-CACHE_DIR="$TEMP_DIR/cache"
+BASE_CACHE_DIR="$TEMP_DIR"
+CACHE_LINK="$BASE_CACHE_DIR/cache"
 REQUEST_HANDLER="$TEMP_DIR/handle_request.sh"
 CAPTURE_SCRIPT="$TEMP_DIR/capture_screenshot.sh"
 SOCAT_PID_FILE="$TEMP_DIR/socat_server.pid"
@@ -31,44 +32,49 @@ cleanup() {
     exit 0
 }
 
-mkdir -p "$CACHE_DIR"
+mkdir -p "$TEMP_DIR"
+if [ ! -L "$CACHE_LINK" ]; then
+    mkdir -p "$TEMP_DIR/initial_cache"
+    ln -s "$TEMP_DIR/initial_cache" "$CACHE_LINK"
+fi
 
+# Update images atomically using symlinks
 cat << 'EOF' > "$CAPTURE_SCRIPT"
 #!/bin/bash
-CACHE_DIR="/tmp/screenshot_server/cache"
-LOG_FILE="/tmp/screenshot_server/server.log"
+BASE_CACHE_DIR="/tmp/screenshot_server"
+CACHE_LINK="$BASE_CACHE_DIR/cache"
+LOG_FILE="$BASE_CACHE_DIR/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
 GEOMETRY="$1"
 
-temp_screenshot=$(mktemp "$CACHE_DIR/screenshot-XXXXXX.png") || exit 1
+NEW_CACHE=$(mktemp -d "$BASE_CACHE_DIR/newcache.XXXXXX") || exit 1
 
-
+temp_screenshot=$(mktemp "$NEW_CACHE/screenshot-XXXXXX.png") || exit 1
 echo "$(date "$DATE_LOG_FORMAT") Taking new screenshot with geometry $GEOMETRY" >> "$LOG_FILE"
-
-
 if [[ -n "$GEOMETRY" ]]; then
     import -silent -window root -crop "$GEOMETRY" "$temp_screenshot"
 else
     import -silent -window root "$temp_screenshot"
 fi
-
-
 echo "$(date "$DATE_LOG_FORMAT") New screenshot saved in $temp_screenshot" >> "$LOG_FILE"
 
-
-date '+%Y-%m-%d_%H:%M:%S' > "$CACHE_DIR/timestamp.txt"
+# Generate all sizes and update the timestamp in the new cache directory
+date '+%Y-%m-%d_%H:%M:%S' > "$NEW_CACHE/timestamp.txt"
 for format in tiny small medium original; do
     case "$format" in
-        tiny) convert "$temp_screenshot" -resize 10% "$CACHE_DIR/$format.png" ;;
-        small) convert "$temp_screenshot" -resize 25% "$CACHE_DIR/$format.png" ;;
-        medium) convert "$temp_screenshot" -resize 50% "$CACHE_DIR/$format.png" ;;
-        original) cp "$temp_screenshot" "$CACHE_DIR/$format.png" ;;
+        tiny)    convert "$temp_screenshot" -resize 10% "$NEW_CACHE/$format.png" ;;
+        small)   convert "$temp_screenshot" -resize 25% "$NEW_CACHE/$format.png" ;;
+        medium)  convert "$temp_screenshot" -resize 50% "$NEW_CACHE/$format.png" ;;
+        original) cp "$temp_screenshot" "$NEW_CACHE/$format.png" ;;
     esac
 done
-
-echo "$(date "$DATE_LOG_FORMAT") New cache files are ready" >> "$LOG_FILE"
+echo "$(date "$DATE_LOG_FORMAT") New cache files are ready in $NEW_CACHE" >> "$LOG_FILE"
 
 rm -f "$temp_screenshot"
+
+# Atomically update the cache symlink so that all new images appear at once
+ln -sfn "$NEW_CACHE" "$CACHE_LINK"
+echo "$(date "$DATE_LOG_FORMAT") Updated cache symlink to $NEW_CACHE" >> "$LOG_FILE"
 EOF
 
 chmod +x "$CAPTURE_SCRIPT"
