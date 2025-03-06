@@ -19,7 +19,9 @@ ShotHost is a **simple screenshot server** that captures the screen at regular i
 ✅ Supports capturing a specific portion of the screen using **X11 geometry format** (`WIDTHxHEIGHT+X+Y`).  
 ✅ 🎨 Allows direct image download.  
 ✅ 🚀 **Dependency Check**: The script will notify if any required dependencies are missing.
-
+✅ Logging to File: Use the -l or --log-to-file option to enable file logging. When enabled, logs are saved to:
+`$HOME/.local/share/shothost/logs/server.log`
+* By default, logs are output to stdout only.
 ---
 
 ## **📥 Installation**
@@ -71,6 +73,18 @@ Run in the background on port **8585** with a **15-second cache update**, captur
 ./server.sh 8585 15 300x500+20+30 &
 ```
 
+With Logging Enabled:
+Run on port 9090 with a 5-second cache update and file logging, capturing an area of 1920x1080 pixels starting at (1920,0):
+```sh
+./server.sh -l 9090 5 1920x1080+1920+0
+```
+
+
+Background Execution with Custom Geometry & Logging:
+Run on port 8585 with a 15-second cache update, capturing a 300x500 section from (20,30), with logging enabled:
+```sh
+./server.sh --log-to-file 8585 15 300x500+20+30 &
+```
 ---
 
 ## **🌐 Accessing the Server**
