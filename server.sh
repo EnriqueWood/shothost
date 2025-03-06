@@ -72,9 +72,18 @@ echo "$(date "$DATE_LOG_FORMAT") New cache files are ready in $NEW_CACHE" >> "$L
 
 rm -f "$temp_screenshot"
 
+PREVIOUS_CACHE=$(readlink -f "$CACHE_LINK")
+
 # Atomically update the cache symlink so that all new images appear at once
 ln -sfn "$NEW_CACHE" "$CACHE_LINK"
 echo "$(date "$DATE_LOG_FORMAT") Updated cache symlink to $NEW_CACHE" >> "$LOG_FILE"
+
+# Remove old cache
+if [[ -n "$PREVIOUS_CACHE" && -d "$PREVIOUS_CACHE" ]]; then
+    rm -rf "$PREVIOUS_CACHE"
+    echo "$(date "$DATE_LOG_FORMAT") Removed old cache: $PREVIOUS_CACHE" >> "$LOG_FILE"
+fi
+
 EOF
 
 chmod +x "$CAPTURE_SCRIPT"
