@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# Parse command-line options
+LOG_TO_FILE=false
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -l|--log-to-file)
+      LOG_TO_FILE=true
+      shift
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Restore positional parameters
+set -- "${POSITIONAL_ARGS[@]}"
+
 PORT=${1:-8080}
 CACHE_LIFETIME=${2:-10}
 GEOMETRY=${3:-""}
@@ -10,9 +30,20 @@ CACHE_LINK="$BASE_CACHE_DIR/cache"
 REQUEST_HANDLER="$TEMP_DIR/handle_request.sh"
 CAPTURE_SCRIPT="$TEMP_DIR/capture_screenshot.sh"
 SOCAT_PID_FILE="$TEMP_DIR/socat_server.pid"
-LOG_FILE="$TEMP_DIR/server.log"
+LOG_DIR="$HOME/.local/share/shothost/logs"
+LOG_FILE="$LOG_DIR/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
 DEPENDENCIES=("import" "convert" "base64" "socat" "grep" "sed")
+
+mkdir -p "$LOG_DIR"
+
+log_message() {
+    local message="$(date "$DATE_LOG_FORMAT") [server] $1"
+    echo "$message"
+    if $LOG_TO_FILE; then
+        echo "$message" >> "$LOG_FILE"
+    fi
+}
 
 check_dependencies() {
     local missing=()
@@ -26,7 +57,7 @@ check_dependencies() {
 }
 
 cleanup() {
-    echo "$(date "$DATE_LOG_FORMAT") Stopping server and cleaning up..." | tee -a "$LOG_FILE"
+    log_message "Stopping server and cleaning up..."
     rm -rf "$BASE_CACHE_DIR"
     [[ -n "$UPDATE_CACHE_PID" ]] && kill "$UPDATE_CACHE_PID" 2>/dev/null
     [[ -f "$SOCAT_PID_FILE" ]] && kill "$(cat "$SOCAT_PID_FILE")" 2>/dev/null && rm -f "$SOCAT_PID_FILE"
@@ -46,20 +77,31 @@ cat << 'EOF' > "$CAPTURE_SCRIPT"
 #!/bin/bash
 BASE_CACHE_DIR="/dev/shm/shothost"
 CACHE_LINK="$BASE_CACHE_DIR/cache"
-LOG_FILE="/tmp/shothost/server.log"
+LOG_DIR="$HOME/.local/share/shothost/logs"
+LOG_FILE="$LOG_DIR/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
+LOG_TO_FILE=$LOG_TO_FILE
 GEOMETRY="$1"
+
+# Logging function
+log_message() {
+    local message="$(date "$DATE_LOG_FORMAT") [screenshot capture] $1"
+    echo "$message" >&2 # Redirected to stderr to avoid interfering in socat's input
+    if $LOG_TO_FILE; then
+        echo "$message" >> "$LOG_FILE"
+    fi
+}
 
 NEW_CACHE=$(mktemp -d "$BASE_CACHE_DIR/newcache.XXXXXX") || exit 1
 
 temp_screenshot=$(mktemp "$NEW_CACHE/screenshot-XXXXXX.png") || exit 1
-echo "$(date "$DATE_LOG_FORMAT") Taking new screenshot with geometry $GEOMETRY" >> "$LOG_FILE"
+log_message "Taking new screenshot with geometry $GEOMETRY"
 if [[ -n "$GEOMETRY" ]]; then
     import -silent -window root -crop "$GEOMETRY" "$temp_screenshot"
 else
     import -silent -window root "$temp_screenshot"
 fi
-echo "$(date "$DATE_LOG_FORMAT") New screenshot saved in $temp_screenshot" >> "$LOG_FILE"
+log_message "New screenshot saved in $temp_screenshot"
 
 # Generate all sizes and update the timestamp in the new cache directory
 date '+%Y-%m-%d_%H:%M:%S' > "$NEW_CACHE/timestamp.txt"
@@ -71,7 +113,7 @@ for format in tiny small medium original; do
         original) cp "$temp_screenshot" "$NEW_CACHE/$format.png" ;;
     esac
 done
-echo "$(date "$DATE_LOG_FORMAT") New cache files are ready in $NEW_CACHE" >> "$LOG_FILE"
+log_message "New cache files are ready in $NEW_CACHE"
 
 rm -f "$temp_screenshot"
 
@@ -79,12 +121,12 @@ PREVIOUS_CACHE=$(readlink -f "$CACHE_LINK")
 
 # Atomically update the cache symlink so that all new images appear at once
 ln -sfn "$NEW_CACHE" "$CACHE_LINK"
-echo "$(date "$DATE_LOG_FORMAT") Updated cache symlink to $NEW_CACHE" >> "$LOG_FILE"
+log_message "Updated cache symlink to $NEW_CACHE"
 
 # Remove old cache
 if [[ -n "$PREVIOUS_CACHE" && -d "$PREVIOUS_CACHE" ]]; then
     rm -rf "$PREVIOUS_CACHE"
-    echo "$(date "$DATE_LOG_FORMAT") Removed old cache: $PREVIOUS_CACHE" >> "$LOG_FILE"
+    log_message "Removed old cache: $PREVIOUS_CACHE"
 fi
 EOF
 
@@ -99,7 +141,7 @@ update_cache() {
 
 trap cleanup SIGINT SIGTERM EXIT
 check_dependencies
-echo "$(date "$DATE_LOG_FORMAT") Server started on port $PORT" | tee -a "$LOG_FILE"
+log_message "Server started on port $PORT"
 
 update_cache &
 UPDATE_CACHE_PID=$!
@@ -109,12 +151,23 @@ cat << 'EOF' > "$REQUEST_HANDLER"
 #!/bin/bash
 CACHE_DIR="/dev/shm/shothost/cache"
 TIMESTAMP_FILE="$CACHE_DIR/timestamp.txt"
-LOG_FILE="/tmp/shothost/server.log"
+LOG_DIR="$HOME/.local/share/shothost/logs"
+LOG_FILE="$LOG_DIR/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
 CAPTURE_SCRIPT="/tmp/shothost/capture_screenshot.sh"
+LOG_TO_FILE=$LOG_TO_FILE
+
+# Logging function
+log_message() {
+    local message="$(date "$DATE_LOG_FORMAT") [request-handler] $1"
+    echo "$message" >&2 # Redirected to stderr to avoid interfering in socat's input
+    if $LOG_TO_FILE; then
+        echo "$message" >> "$LOG_FILE"
+    fi
+}
 
 read -r REQUEST_LINE
-echo "$(date "$DATE_LOG_FORMAT") New request: $REQUEST_LINE" >> "$LOG_FILE"
+log_message "New request: $REQUEST_LINE"
 
 FORMAT=$(echo "$REQUEST_LINE" | grep -oP "(?<=size=)[^& ]*")
 FORMAT=${FORMAT:-"medium"}
@@ -163,6 +216,13 @@ else
     echo "</body></html>"
 fi
 EOF
+
+
+if $LOG_TO_FILE; then
+    log_message "Logging to file: $LOG_FILE"
+else
+    log_message "Logging to stdout only (use -l or --log-to-file to enable file logging)"
+fi
 
 chmod +x "$REQUEST_HANDLER"
 GEOMETRY="$GEOMETRY" socat -T 10 TCP-LISTEN:$PORT,reuseaddr,fork EXEC:"$REQUEST_HANDLER" &
