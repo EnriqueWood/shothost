@@ -3,8 +3,9 @@
 PORT=${1:-8080}
 CACHE_LIFETIME=${2:-10}
 GEOMETRY=${3:-""}
-TEMP_DIR="/tmp/screenshot_server"
-BASE_CACHE_DIR="$TEMP_DIR"
+
+TEMP_DIR="/tmp/shothost"
+BASE_CACHE_DIR="/dev/shm/shothost"
 CACHE_LINK="$BASE_CACHE_DIR/cache"
 REQUEST_HANDLER="$TEMP_DIR/handle_request.sh"
 CAPTURE_SCRIPT="$TEMP_DIR/capture_screenshot.sh"
@@ -26,24 +27,26 @@ check_dependencies() {
 
 cleanup() {
     echo "$(date "$DATE_LOG_FORMAT") Stopping server and cleaning up..." | tee -a "$LOG_FILE"
-    rm -rf "$TEMP_DIR"
+    rm -rf "$BASE_CACHE_DIR"
     [[ -n "$UPDATE_CACHE_PID" ]] && kill "$UPDATE_CACHE_PID" 2>/dev/null
     [[ -f "$SOCAT_PID_FILE" ]] && kill "$(cat "$SOCAT_PID_FILE")" 2>/dev/null && rm -f "$SOCAT_PID_FILE"
     exit 0
 }
 
 mkdir -p "$TEMP_DIR"
+mkdir -p "$BASE_CACHE_DIR"
+
 if [ ! -L "$CACHE_LINK" ]; then
-    mkdir -p "$TEMP_DIR/initial_cache"
-    ln -s "$TEMP_DIR/initial_cache" "$CACHE_LINK"
+    mkdir -p "$BASE_CACHE_DIR/initial_cache"
+    ln -s "$BASE_CACHE_DIR/initial_cache" "$CACHE_LINK"
 fi
 
 # Update images atomically using symlinks
 cat << 'EOF' > "$CAPTURE_SCRIPT"
 #!/bin/bash
-BASE_CACHE_DIR="/tmp/screenshot_server"
+BASE_CACHE_DIR="/dev/shm/shothost"
 CACHE_LINK="$BASE_CACHE_DIR/cache"
-LOG_FILE="$BASE_CACHE_DIR/server.log"
+LOG_FILE="/tmp/shothost/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
 GEOMETRY="$1"
 
@@ -83,7 +86,6 @@ if [[ -n "$PREVIOUS_CACHE" && -d "$PREVIOUS_CACHE" ]]; then
     rm -rf "$PREVIOUS_CACHE"
     echo "$(date "$DATE_LOG_FORMAT") Removed old cache: $PREVIOUS_CACHE" >> "$LOG_FILE"
 fi
-
 EOF
 
 chmod +x "$CAPTURE_SCRIPT"
@@ -105,11 +107,11 @@ UPDATE_CACHE_PID=$!
 # Request Handler Script
 cat << 'EOF' > "$REQUEST_HANDLER"
 #!/bin/bash
-CACHE_DIR="/tmp/screenshot_server/cache"
+CACHE_DIR="/dev/shm/shothost/cache"
 TIMESTAMP_FILE="$CACHE_DIR/timestamp.txt"
-LOG_FILE="/tmp/screenshot_server/server.log"
+LOG_FILE="/tmp/shothost/server.log"
 DATE_LOG_FORMAT="+%Y-%m-%d %H:%M:%S.%3N"
-CAPTURE_SCRIPT="/tmp/screenshot_server/capture_screenshot.sh"
+CAPTURE_SCRIPT="/tmp/shothost/capture_screenshot.sh"
 
 read -r REQUEST_LINE
 echo "$(date "$DATE_LOG_FORMAT") New request: $REQUEST_LINE" >> "$LOG_FILE"
