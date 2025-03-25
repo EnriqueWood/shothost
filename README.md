@@ -50,8 +50,8 @@ brew install imagemagick socat coreutils grep
 ## **🚀 Usage**
 ### **1️⃣ Start the Server**
 ```sh
-chmod +x server.sh
-./server.sh [PORT] [CACHE_INTERVAL] [GEOMETRY]
+chmod +x shothost-server
+./shothost-server [PORT] [CACHE_INTERVAL] [GEOMETRY]
 ```
 - 🖥️ `[PORT]` (optional) – Port to run the HTTP server (**default:** `8080`).
 - ⏳ `[CACHE_INTERVAL]` (optional) – Interval (in seconds) between screenshots (**default:** `10` seconds).
@@ -60,30 +60,30 @@ chmod +x server.sh
 ### **Examples**
 Run on port **9090** with a **5-second cache update**, capturing an area of **1920x1080 pixels starting at (1920,0) to capture the full hd screen at the monitor at the right of the main monitor**:
 ```sh
-./server.sh 9090 5 1920x1080+1920+0
+./shothost-server 9090 5 1920x1080+1920+0
 ```
 
 Run with **default settings** (port `8080`, 10-second cache, full-screen capture):
 ```sh
-./server.sh
+./shothost-server
 ```
 
 Run in the background on port **8585** with a **15-second cache update**, capturing a **300x500 section from (20,30)**:
 ```sh
-./server.sh 8585 15 300x500+20+30 &
+./shothost-server 8585 15 300x500+20+30 &
 ```
 
 With Logging Enabled:
 Run on port 9090 with a 5-second cache update and file logging, capturing an area of 1920x1080 pixels starting at (1920,0):
 ```sh
-./server.sh -l 9090 5 1920x1080+1920+0
+./shothost-server -l 9090 5 1920x1080+1920+0
 ```
 
 
 Background Execution with Custom Geometry & Logging:
 Run on port 8585 with a 15-second cache update, capturing a 300x500 section from (20,30), with logging enabled:
 ```sh
-./server.sh --log-to-file 8585 15 300x500+20+30 &
+./shothost-server --log-to-file 8585 15 300x500+20+30 &
 ```
 ---
 
@@ -110,7 +110,7 @@ http://<server-address>:<server-port>/?size=<format>&download=true
 ## **🛑 Stopping the Server**
 To stop the server, use:
 ```sh
-pkill -f server.sh
+pkill -f shothost-server
 ```
 Or press **`CTRL + C`**.
 
@@ -133,7 +133,7 @@ import-im6.q16: unable to open X server `' @ error/import.c/ImportImageCommand/3
 You need to set the `DISPLAY` variable manually (usually is `:0`) before running the script:
 
 ```sh
-DISPLAY=:0 ./server.sh
+DISPLAY=:0 ./shothost-server
 ```
 
 ---

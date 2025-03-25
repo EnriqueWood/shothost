@@ -1,1 +1,6 @@
 .idea
+nohup.out
+*.log
+*.png
+*.jpg
+*.txt
