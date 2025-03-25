@@ -168,6 +168,10 @@ log_message() {
 
 read -r REQUEST_LINE
 log_message "New request: $REQUEST_LINE"
+while IFS= read -r line; do
+  [ "$line" = $'\r' ] && break
+  log_message "$line"
+done
 
 FORMAT=$(echo "$REQUEST_LINE" | grep -oP "(?<=size=)[^& ]*")
 FORMAT=${FORMAT:-"medium"}
